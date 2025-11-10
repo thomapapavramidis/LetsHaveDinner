@@ -133,7 +133,7 @@ const Index = () => {
                 variant="outline"
                 className="w-full text-sm font-semibold"
               >
-                {loading ? "loading..." : "actually nvm, i'm out"}
+                {loading ? "loading..." : "actually nvm, i'm lame af 🤡"}
               </Button>
             </div>
           )}

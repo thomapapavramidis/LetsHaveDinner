@@ -42,29 +42,31 @@ const Profile = () => {
   };
 
   const handleSave = async () => {
-    if (!user) return;
+   if (!user) return;
 
-    setLoading(true);
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .upsert({
-          id: user.id,
-          name: profile.name,
-          major: profile.major,
-          year: profile.year,
-          email: user.email,
-        });
-
-      if (error) throw error;
-      
-      toast.success("profile updated! ✨");
-    } catch (error) {
-      toast.error("couldn't save, try again");
-    } finally {
-      setLoading(false);
-    }
+   setLoading(true);
+   try {
+     const { error } = await supabase
+       .from("profiles")
+       .upsert({
+         id: user.id,
+         name: profile.name,
+         major: profile.major,
+         year: profile.year,
+         // remove email if it doesn't exist in the table
+       });
+ 
+     if (error) throw error;
+ 
+     toast.success("profile updated! ✨");
+   } catch (error) {
+     console.error(error);
+     toast.error("couldn't save, try again");
+   } finally {
+     setLoading(false);
+   }
   };
+
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
