@@ -80,7 +80,7 @@ const Index = () => {
             CommonTable
           </h1>
           <p className="text-muted-foreground text-lg font-medium">
-            vibe check: dinner edition ✨
+            Blind date: dinner edition ✨
           </p>
         </div>
 
@@ -155,16 +155,20 @@ const Index = () => {
           <h3 className="font-black text-xl text-center mb-6">how it works</h3>
           <div className="grid gap-3">
             {[
-              { icon: "✅", title: "opt in", desc: "tap that button before the deadline" },
-              { icon: "🎲", title: "get matched", desc: "we'll group you with 2-3 cool people" },
-              { icon: "🍽️", title: "have dinner", desc: "meet up at your assigned dining hall" },
-              { icon: "💭", title: "drop feedback", desc: "quick survey after (takes 30 sec)" },
+              { icon: "✅", title: "Opt in", desc: "tap that button before the deadline" },
+              { icon: "🎲", title: "Get matched", desc: "we'll group you with a cool person" },
+              { icon: "🍽️", title: "Have dinner", desc: "meet up at your assigned dining hall" },
+              { icon: "💭", title: "Drop feedback", desc: "quick survey after (takes 30 sec)" },
             ].map((step, idx) => (
               <Card key={idx} className="p-5 flex items-start gap-4 hover:shadow-md transition-all duration-200 hover:translate-x-1 bg-card/80 backdrop-blur-sm">
                 <span className="text-3xl">{step.icon}</span>
                 <div>
                   <p className="font-bold text-foreground">{step.title}</p>
                   <p className="text-sm text-muted-foreground font-medium">{step.desc}</p>
+
+
+
+
                 </div>
               </Card>
             ))}
