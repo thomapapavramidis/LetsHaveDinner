@@ -10,6 +10,7 @@ import Match from "./pages/Match";
 import Feed from "./pages/Feed";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
+import QuestionOfWeek from "./pages/QuestionOfWeek";
 import Navigation from "./components/Navigation";
 import NotFound from "./pages/NotFound";
 
@@ -51,6 +52,7 @@ const App = () => (
                 <ProtectedRoute>
                   <Routes>
                     <Route path="/" element={<Index />} />
+                    <Route path="/question" element={<QuestionOfWeek />} />
                     <Route path="/match" element={<Match />} />
                     <Route path="/feed" element={<Feed />} />
                     <Route path="/profile" element={<Profile />} />

@@ -1,10 +1,11 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowBigUp, Flame } from "lucide-react";
+import { ArrowBigUp, Flame, Image as ImageIcon, Send, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Post {
   id: string;
@@ -12,12 +13,18 @@ interface Post {
   upvotes: number;
   created_at: string;
   user_has_upvoted: boolean;
+  image_url: string | null;
 }
 
 const Feed = () => {
   const { user } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newPostContent, setNewPostContent] = useState("");
+  const [newPostImage, setNewPostImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchPosts();
@@ -83,6 +90,83 @@ const Feed = () => {
     }
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setNewPostImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setNewPostImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleCreatePost = async () => {
+    if (!user || (!newPostContent.trim() && !newPostImage)) {
+      toast.error("add some content or an image!");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      let imageUrl = null;
+
+      // Upload image if present
+      if (newPostImage) {
+        const fileExt = newPostImage.name.split(".").pop();
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from("post-images")
+          .upload(fileName, newPostImage);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from("post-images")
+          .getPublicUrl(fileName);
+
+        imageUrl = publicUrl;
+      }
+
+      // Create post
+      const { error: postError } = await supabase
+        .from("posts")
+        .insert({
+          user_id: user.id,
+          content: newPostContent.trim() || "",
+          image_url: imageUrl
+        });
+
+      if (postError) throw postError;
+
+      toast.success("post created! 🎉");
+      setNewPostContent("");
+      setNewPostImage(null);
+      setImagePreview(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      
+      // Refresh posts
+      fetchPosts();
+    } catch (error) {
+      console.error(error);
+      toast.error("couldn't create post, try again");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const getTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -99,14 +183,65 @@ const Feed = () => {
       <div className="container max-w-2xl mx-auto px-4 pt-8">
         <div className="text-center mb-8 animate-fade-in">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/20 to-secondary/20 text-primary font-bold mb-3">
-            <Flame className="w-5 h-5" />
+            <Flame className="w-5 h-5 animate-pulse" />
             HOT TAKES
           </div>
           <h1 className="text-4xl font-black text-foreground mb-2">dinner vibes 🔥</h1>
           <p className="text-muted-foreground font-medium">
-            the best moments from past dinners
+            share moments from your dinners
           </p>
         </div>
+
+        {user && (
+          <Card className="p-4 mb-6 bg-card/95 backdrop-blur-sm border-2 border-primary/10 shadow-[var(--shadow-soft)] animate-fade-in">
+            <Textarea
+              placeholder="what's on your mind? share a moment from dinner..."
+              value={newPostContent}
+              onChange={(e) => setNewPostContent(e.target.value)}
+              className="min-h-[80px] mb-3 border-2 resize-none font-medium"
+            />
+            
+            {imagePreview && (
+              <div className="relative mb-3 rounded-lg overflow-hidden border-2 border-border">
+                <img src={imagePreview} alt="Preview" className="w-full h-48 object-cover" />
+                <button
+                  onClick={removeImage}
+                  className="absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90 transition-all"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                className="gap-2 font-semibold"
+                disabled={uploading}
+              >
+                <ImageIcon className="w-4 h-4" />
+                {imagePreview ? "change image" : "add image"}
+              </Button>
+              <Button
+                onClick={handleCreatePost}
+                disabled={uploading || (!newPostContent.trim() && !newPostImage)}
+                className="ml-auto gap-2 font-bold bg-gradient-to-r from-primary to-secondary hover:opacity-90"
+              >
+                {uploading ? "posting..." : "post"}
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          </Card>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -139,9 +274,20 @@ const Feed = () => {
                     </span>
                   </div>
                   <div className="flex-1">
-                    <p className="text-foreground leading-relaxed font-medium mb-2">
-                      {post.content}
-                    </p>
+                    {post.image_url && (
+                      <div className="mb-3 rounded-lg overflow-hidden border-2 border-border/50">
+                        <img 
+                          src={post.image_url} 
+                          alt="Post" 
+                          className="w-full max-h-96 object-cover hover:scale-105 transition-transform duration-300" 
+                        />
+                      </div>
+                    )}
+                    {post.content && (
+                      <p className="text-foreground leading-relaxed font-medium mb-2">
+                        {post.content}
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground font-semibold">
                       {getTimeAgo(post.created_at)}
                     </p>

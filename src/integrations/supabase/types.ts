@@ -163,6 +163,7 @@ export type Database = {
           created_at: string
           cycle_id: string | null
           id: string
+          image_url: string | null
           is_featured: boolean
           upvotes: number
           user_id: string
@@ -172,6 +173,7 @@ export type Database = {
           created_at?: string
           cycle_id?: string | null
           id?: string
+          image_url?: string | null
           is_featured?: boolean
           upvotes?: number
           user_id: string
@@ -181,6 +183,7 @@ export type Database = {
           created_at?: string
           cycle_id?: string | null
           id?: string
+          image_url?: string | null
           is_featured?: boolean
           upvotes?: number
           user_id?: string
@@ -227,6 +230,38 @@ export type Database = {
           year?: string | null
         }
         Relationships: []
+      }
+      responses: {
+        Row: {
+          answer: string
+          created_at: string
+          cycle_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          cycle_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          cycle_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "responses_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "cycles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

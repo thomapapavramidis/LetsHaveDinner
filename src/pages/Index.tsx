@@ -4,10 +4,12 @@ import { Calendar, Users, Clock, CheckCircle2, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 const Index = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [isOptedIn, setIsOptedIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeCycle, setActiveCycle] = useState<any>(null);
@@ -15,6 +17,28 @@ const Index = () => {
   useEffect(() => {
     fetchActiveCycle();
   }, [user]);
+
+  useEffect(() => {
+    // Check if user should see Question of the Week
+    if (activeCycle && user) {
+      const hasSeenThisWeek = localStorage.getItem(`qotw_seen_${activeCycle.id}`);
+      if (!hasSeenThisWeek) {
+        // Check if user has already answered this cycle
+        supabase
+          .from("responses")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("cycle_id", activeCycle.id)
+          .single()
+          .then(({ data }) => {
+            if (!data) {
+              // User hasn't answered yet, redirect to question page
+              navigate("/question");
+            }
+          });
+      }
+    }
+  }, [activeCycle, user]);
 
   const fetchActiveCycle = async () => {
     const { data: cycle } = await supabase
