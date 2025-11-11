@@ -21,6 +21,7 @@ const QuestionOfWeek = () => {
   const [cycle, setCycle] = useState<Cycle | null>(null);
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     fetchActiveCycle();
@@ -46,7 +47,6 @@ const QuestionOfWeek = () => {
 
     setLoading(true);
     try {
-      // Save response
       const { error: responseError } = await supabase
         .from("responses")
         .insert({
@@ -57,7 +57,6 @@ const QuestionOfWeek = () => {
 
       if (responseError) throw responseError;
 
-      // Create opt-in
       const { error: optInError } = await supabase
         .from("opt_ins")
         .insert({
@@ -67,11 +66,12 @@ const QuestionOfWeek = () => {
 
       if (optInError) throw optInError;
 
-      // Mark as seen for this cycle
       localStorage.setItem(`qotw_seen_${cycle.id}`, "true");
 
-      toast.success("you're in! ✨");
-      navigate("/");
+      setShowSuccess(true);
+      setTimeout(() => {
+        navigate("/");
+      }, 1500);
     } catch (error) {
       console.error(error);
       toast.error("something went wrong, try again");
@@ -91,44 +91,66 @@ const QuestionOfWeek = () => {
     return null;
   }
 
+  if (showSuccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-primary via-primary/95 to-secondary">
+        <div className="text-center animate-scale-in">
+          <div className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-background/95 backdrop-blur-lg border-2 border-primary/30 shadow-[var(--shadow-glow)]">
+            <Sparkles className="w-8 h-8 text-primary animate-glow" />
+            <span className="text-2xl font-black text-foreground">you're in! ✨</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary via-primary/95 to-secondary flex items-center justify-center p-4 animate-fade-in">
-      <Card className="max-w-2xl w-full p-8 md:p-12 bg-background/95 backdrop-blur-lg border-2 border-primary/20 shadow-[var(--shadow-glow)] animate-scale-in">
+    <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4">
+      {/* Animated gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/95 to-secondary" />
+      
+      {/* Floating orbs */}
+      <div className="absolute top-20 left-20 w-64 h-64 bg-accent/20 rounded-full blur-3xl animate-float" />
+      <div className="absolute bottom-20 right-20 w-80 h-80 bg-secondary/20 rounded-full blur-3xl animate-float" style={{ animationDelay: "1s" }} />
+      
+      <Card className="relative max-w-2xl w-full p-8 md:p-12 glass-card border-2 border-primary/20 shadow-[var(--shadow-glow)] animate-scale-in">
         <button
           onClick={handleSkip}
-          className="absolute top-4 right-4 p-2 hover:bg-muted rounded-full transition-colors"
+          className="absolute top-4 right-4 p-2 hover:bg-muted/50 rounded-full transition-all hover:scale-110"
         >
           <X className="w-5 h-5 text-muted-foreground" />
         </button>
 
-        <div className="text-center mb-8 space-y-4">
-          <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-primary to-secondary text-primary-foreground font-bold text-lg mb-4 animate-fade-in">
-            <Sparkles className="w-6 h-6" />
+        <div className="text-center mb-8 space-y-6">
+          <div className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-gradient-to-r from-primary to-secondary text-primary-foreground font-black text-lg mb-4 shadow-[var(--shadow-button)] animate-fade-in">
+            <Sparkles className="w-6 h-6 animate-glow" />
             question of the week
           </div>
           
-          <h1 className="text-4xl md:text-5xl font-black text-foreground leading-tight animate-fade-in" style={{ animationDelay: "100ms" }}>
+          <h1 className="text-4xl md:text-5xl font-black text-foreground leading-tight animate-fade-in-up" style={{ animationDelay: "100ms" }}>
             {cycle.prompt}
           </h1>
           
-          <p className="text-muted-foreground text-lg font-medium animate-fade-in" style={{ animationDelay: "200ms" }}>
+          <p className="text-muted-foreground text-lg font-semibold animate-fade-in-up" style={{ animationDelay: "200ms" }}>
             share your thoughts and join this week's dinner! 🍽️
           </p>
         </div>
 
-        <div className="space-y-6 animate-fade-in" style={{ animationDelay: "300ms" }}>
+        <div className="space-y-6 animate-fade-in-up" style={{ animationDelay: "300ms" }}>
           <Textarea
             placeholder="type your answer here..."
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
-            className="min-h-[120px] text-lg border-2 border-border focus:border-primary transition-all resize-none font-medium"
+            className="min-h-[140px] text-lg border-2 border-border focus:border-primary transition-all resize-none font-medium rounded-xl bg-background/50 backdrop-blur-sm"
           />
 
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-4">
             <Button
               onClick={handleAnswerAndJoin}
               disabled={loading || !answer.trim()}
-              className="flex-1 h-14 text-lg font-bold gap-2 bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all hover:scale-[1.02] shadow-[var(--shadow-soft)]"
+              variant="gradient"
+              size="lg"
+              className="flex-1 gap-2"
             >
               {loading ? "saving..." : "answer & join this week"}
               <ArrowRight className="w-5 h-5" />
@@ -137,7 +159,8 @@ const QuestionOfWeek = () => {
             <Button
               onClick={handleSkip}
               variant="outline"
-              className="h-14 text-lg font-semibold border-2 hover:bg-muted/50"
+              size="lg"
+              className="sm:w-auto"
             >
               skip for now
             </Button>

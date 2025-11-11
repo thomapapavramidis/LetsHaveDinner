@@ -1,80 +1,115 @@
-import { Card } from "@/components/ui/card";
-import { Users, MapPin, MessageSquare } from "lucide-react";
+import Navigation from "@/components/Navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MapPin, MessageSquare, Users, Sparkles } from "lucide-react";
 
 const Match = () => {
+  const mockMatch = {
+    eventTime: "Wednesday, Nov 15 at 6:30 PM",
+    location: "Commons Dining Hall",
+    conversationStarter: "If you could have dinner with any historical figure, who would it be and why?",
+    groupMembers: [
+      { name: "Sarah Chen", major: "Computer Science", year: "Junior" },
+      { name: "Alex Johnson", major: "Psychology", year: "Sophomore" },
+      { name: "Maya Patel", major: "Economics", year: "Senior" },
+      { name: "You", major: "Your Major", year: "Your Year" },
+    ],
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-primary/5 pb-20">
-      <div className="container max-w-2xl mx-auto px-4 pt-8">
-        <div className="text-center mb-8 animate-fade-in">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/20 to-secondary/20 text-primary font-bold mb-3 text-sm">
-            ✨ MATCH FOUND
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background pb-20 relative overflow-hidden">
+      {/* Decorative elements */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/5 rounded-full blur-3xl" />
+      <div className="absolute bottom-20 right-10 w-64 h-64 bg-secondary/5 rounded-full blur-3xl" />
+      
+      <div className="container max-w-2xl mx-auto p-6 pt-8 relative">
+        {/* Hero Banner */}
+        <div className="mb-8 text-center animate-scale-in">
+          <div className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-primary to-secondary text-primary-foreground font-black text-2xl mb-4 shadow-[var(--shadow-glow)] animate-float">
+            <Sparkles className="w-8 h-8 animate-glow" />
+            MATCH FOUND
+            <Sparkles className="w-8 h-8 animate-glow" />
           </div>
-          <h1 className="text-4xl font-black text-foreground mb-2">your group! 🎉</h1>
-          <p className="text-muted-foreground font-bold text-lg">thursday, nov 13 • 6:30 pm</p>
+          <p className="text-xl font-bold text-muted-foreground animate-fade-in-up" style={{ animationDelay: "100ms" }}>
+            {mockMatch.eventTime}
+          </p>
         </div>
 
-        {/* Dining Hall Card */}
-        <Card className="p-6 mb-6 shadow-[var(--shadow-soft)] border-2 border-primary/20 bg-gradient-to-br from-card to-primary/5 hover:shadow-[var(--shadow-glow)] transition-all duration-300 animate-scale-in">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg">
-              <MapPin className="w-7 h-7 text-white" />
+        {/* Location Card */}
+        <Card className="mb-6 glass-card border-2 border-primary/20 shadow-[var(--shadow-float)] hover-lift animate-fade-in-up" style={{ animationDelay: "150ms" }}>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-primary/10">
+                <MapPin className="w-6 h-6 text-primary" />
+              </div>
+              <CardTitle className="text-2xl font-black">meeting spot</CardTitle>
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground font-bold uppercase tracking-wide">meeting spot</p>
-              <p className="font-black text-2xl text-foreground">branford dining hall</p>
-            </div>
-          </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-foreground bg-gradient-to-r from-primary/10 to-secondary/10 p-4 rounded-xl border-2 border-primary/20">
+              {mockMatch.location}
+            </p>
+          </CardContent>
         </Card>
 
-        {/* Conversation Prompt */}
-        <Card className="p-6 mb-6 bg-gradient-to-br from-secondary/10 via-primary/5 to-accent/10 border-2 border-secondary/30 hover:shadow-lg transition-all duration-300">
-          <div className="flex items-start gap-3">
-            <MessageSquare className="w-6 h-6 text-primary mt-1 flex-shrink-0" />
-            <div>
-              <p className="text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wide flex items-center gap-1">
-                💬 conversation starter
-              </p>
-              <p className="text-foreground font-bold text-lg leading-relaxed">
-                "what's a skill you'd love to learn but haven't had time for yet?"
-              </p>
+        {/* Conversation Starter */}
+        <Card className="mb-6 glass-card border-2 border-border shadow-[var(--shadow-float)] hover-lift animate-fade-in-up" style={{ animationDelay: "200ms" }}>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-primary/10">
+                <MessageSquare className="w-6 h-6 text-primary" />
+              </div>
+              <CardTitle className="text-2xl font-black">conversation prompt</CardTitle>
             </div>
-          </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-lg font-semibold text-foreground leading-relaxed bg-muted/50 p-5 rounded-xl border border-border">
+              {mockMatch.conversationStarter}
+            </p>
+          </CardContent>
         </Card>
 
         {/* Group Members */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-5">
-            <Users className="w-6 h-6 text-primary" />
-            <h2 className="text-2xl font-black">your squad</h2>
-          </div>
-
-          <div className="space-y-3">
-            {[
-              { name: "sarah chen", major: "computer science", year: "junior" },
-              { name: "marcus johnson", major: "economics", year: "sophomore" },
-              { name: "you", major: "biology", year: "senior" },
-            ].map((member, idx) => (
-              <Card 
-                key={idx} 
-                className="p-5 hover:shadow-md transition-all duration-200 hover:scale-[1.01] bg-card/90 backdrop-blur-sm border-2 border-transparent hover:border-primary/20 animate-fade-in"
-                style={{ animationDelay: `${idx * 100}ms` }}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary via-secondary to-accent flex items-center justify-center text-white font-black text-xl shadow-lg">
-                    {member.name.charAt(0).toUpperCase()}
+        <Card className="glass-card border-2 border-border shadow-[var(--shadow-float)] hover-lift animate-fade-in-up" style={{ animationDelay: "250ms" }}>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-primary/10">
+                <Users className="w-6 h-6 text-primary" />
+              </div>
+              <CardTitle className="text-2xl font-black">your squad</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4">
+              {mockMatch.groupMembers.map((member, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-4 p-5 rounded-xl bg-gradient-to-r from-muted/50 to-muted/30 border border-border hover:border-primary/50 transition-all hover:scale-[1.02] group"
+                  style={{ animationDelay: `${300 + index * 50}ms` }}
+                >
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-primary-foreground font-black text-xl shadow-[var(--shadow-soft)] group-hover:scale-110 transition-transform">
+                    {member.name[0]}
                   </div>
-                  <div>
-                    <p className="font-bold text-lg">{member.name}</p>
-                    <p className="text-sm text-muted-foreground font-medium">
+                  <div className="flex-1">
+                    <p className="font-black text-lg text-foreground">{member.name}</p>
+                    <p className="text-sm font-semibold text-muted-foreground">
                       {member.major} • {member.year}
                     </p>
                   </div>
                 </div>
-              </Card>
-            ))}
-          </div>
-        </div>
+              ))}
+            </div>
+
+            <div className="mt-6 p-5 rounded-xl bg-gradient-to-r from-primary/10 to-secondary/10 border-2 border-primary/20">
+              <p className="text-center text-sm font-semibold text-foreground">
+                <span className="font-black text-primary">pro tip:</span> arrive a few minutes early and 
+                look for your group members! don't be shy - everyone's here to make new friends 🌟
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      <Navigation />
     </div>
   );
 };
