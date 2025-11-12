@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import Navigation from "@/components/Navigation";
-import { Calendar, MapPin, Users, Sparkles, CheckCircle2 } from "lucide-react";
+import { Calendar, MapPin, Users, Sparkles, CheckCircle2, MessageCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface Cycle {
@@ -17,16 +17,25 @@ interface Cycle {
   is_active: boolean;
 }
 
+interface Response {
+  id: string;
+  answer: string;
+  created_at: string;
+  user_id: string;
+}
+
 const Index = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [cycle, setCycle] = useState<Cycle | null>(null);
   const [isOptedIn, setIsOptedIn] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [topResponses, setTopResponses] = useState<Response[]>([]);
 
   useEffect(() => {
     if (user) {
       checkForNewCycle();
+      fetchTopResponses();
     }
   }, [user]);
 
@@ -58,6 +67,29 @@ const Index = () => {
       setIsOptedIn(!!optIn);
     }
     setLoading(false);
+  };
+
+  const fetchTopResponses = async () => {
+    if (!user) return;
+
+    const { data: activeCycleData } = await supabase
+      .from("cycles")
+      .select("id")
+      .eq("is_active", true)
+      .single();
+
+    if (!activeCycleData) return;
+
+    const { data } = await supabase
+      .from("responses")
+      .select("*")
+      .eq("cycle_id", activeCycleData.id)
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    if (data) {
+      setTopResponses(data);
+    }
   };
 
   const handleOptIn = async () => {
@@ -234,7 +266,42 @@ const Index = () => {
           </CardContent>
         </Card>
 
-        <Card className="glass-card border-2 border-border/50 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
+        {/* Top Answers Section */}
+        {topResponses.length > 0 && (
+          <Card className="glass-card border-2 border-border shadow-[var(--shadow-card)] hover-lift mb-6 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
+            <CardContent className="p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <MessageCircle className="w-6 h-6 text-primary" />
+                <h2 className="text-2xl font-black text-foreground">Top Answers This Week</h2>
+              </div>
+              
+              <div className="space-y-4">
+                {topResponses.map((response, index) => (
+                  <div 
+                    key={response.id} 
+                    className="p-4 rounded-xl bg-muted/30 border border-border/50 hover:border-primary/30 transition-all animate-fade-in-up"
+                    style={{ animationDelay: `${(index + 1) * 50}ms` }}
+                  >
+                    <p className="text-foreground font-medium">{response.answer}</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      {new Date(response.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <Button
+                onClick={() => navigate("/question-of-week")}
+                variant="outline"
+                className="w-full mt-6 font-semibold"
+              >
+                Change My Answer
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card className="glass-card border-2 border-border/50 animate-fade-in-up" style={{ animationDelay: "300ms" }}>
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground text-center font-medium">
               <span className="font-bold text-foreground">how it works:</span> opt in by the deadline, get matched with 3-4 students, 

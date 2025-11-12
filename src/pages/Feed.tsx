@@ -16,6 +16,7 @@ interface Post {
   content: string;
   image_url: string | null;
   upvotes: number;
+  is_anonymous: boolean;
   created_at: string;
 }
 
@@ -28,6 +29,7 @@ const Feed = () => {
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [upvotedPosts, setUpvotedPosts] = useState<Set<string>>(new Set());
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   useEffect(() => {
     fetchPosts();
@@ -106,7 +108,8 @@ const Feed = () => {
           user_id: user.id,
           content: newPost.trim(),
           image_url: imageUrl,
-          upvotes: 0
+          upvotes: 0,
+          is_anonymous: isAnonymous
         });
 
       if (error) throw error;
@@ -114,6 +117,7 @@ const Feed = () => {
       setNewPost("");
       setSelectedImage(null);
       setImagePreview(null);
+      setIsAnonymous(false);
       toast.success("posted! 🎉");
       fetchPosts();
     } catch (error) {
@@ -183,6 +187,18 @@ const Feed = () => {
               onChange={(e) => setNewPost(e.target.value)}
               className="min-h-[100px] border-2 border-border focus:border-primary rounded-xl resize-none text-base font-medium bg-background/50"
             />
+
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={isAnonymous}
+                onChange={(e) => setIsAnonymous(e.target.checked)}
+                className="w-4 h-4 rounded border-2 border-border text-primary focus:ring-2 focus:ring-primary"
+              />
+              <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+                Post anonymously
+              </span>
+            </label>
             
             {imagePreview && (
               <div className="relative rounded-xl overflow-hidden border-2 border-border animate-scale-in">
@@ -272,11 +288,11 @@ const Feed = () => {
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4 mb-4">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-primary-foreground font-black text-lg shadow-[var(--shadow-soft)]">
-                      ?
+                      {post.is_anonymous ? "?" : "U"}
                     </div>
                     <div className="flex-1">
                       <p className="font-bold text-foreground">
-                        anonymous
+                        {post.is_anonymous ? "anonymous" : "user"}
                       </p>
                       <p className="text-sm text-muted-foreground font-medium">
                         {timeAgo(post.created_at)}

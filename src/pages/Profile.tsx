@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import Navigation from "@/components/Navigation";
-import { User, GraduationCap, Calendar, Save, Sparkles } from "lucide-react";
+import { User, GraduationCap, Calendar, Save, Sparkles, Heart } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface Profile {
@@ -21,10 +21,12 @@ const Profile = () => {
   const [profile, setProfile] = useState<Profile>({ name: null, major: null, year: null });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [totalUpvotes, setTotalUpvotes] = useState(0);
 
   useEffect(() => {
     if (user) {
       fetchProfile();
+      fetchTotalUpvotes();
     }
   }, [user]);
 
@@ -42,6 +44,20 @@ const Profile = () => {
       setProfile(data);
     }
     setLoading(false);
+  };
+
+  const fetchTotalUpvotes = async () => {
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("posts")
+      .select("upvotes")
+      .eq("user_id", user.id);
+
+    if (data) {
+      const total = data.reduce((sum, post) => sum + post.upvotes, 0);
+      setTotalUpvotes(total);
+    }
   };
 
   const handleSave = async () => {
@@ -105,12 +121,24 @@ const Profile = () => {
         <Card className="glass-card border-2 border-border shadow-[var(--shadow-float)] hover-lift mb-6 animate-fade-in-up">
           <CardHeader className="pb-6">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-2xl font-black flex items-center gap-3">
-                <Sparkles className="w-7 h-7 text-primary animate-glow" />
-                profile details
-              </CardTitle>
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-primary-foreground font-black text-3xl shadow-[var(--shadow-glow)]">
-                {profile.name?.[0]?.toUpperCase() || "?"}
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-primary-foreground font-black text-3xl shadow-[var(--shadow-glow)]">
+                  {profile.name?.[0]?.toUpperCase() || "?"}
+                </div>
+                <div>
+                  <CardTitle className="text-2xl font-black flex items-center gap-2">
+                    <Sparkles className="w-6 h-6 text-primary animate-glow" />
+                    profile details
+                  </CardTitle>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-primary/10 to-secondary/10 border-2 border-primary/20">
+                <Heart className="w-5 h-5 text-primary fill-primary" />
+                <div className="text-center">
+                  <p className="text-2xl font-black text-foreground">{totalUpvotes}</p>
+                  <p className="text-xs text-muted-foreground font-semibold">upvotes</p>
+                </div>
               </div>
             </div>
           </CardHeader>

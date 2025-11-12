@@ -164,6 +164,7 @@ export type Database = {
           cycle_id: string | null
           id: string
           image_url: string | null
+          is_anonymous: boolean
           is_featured: boolean
           upvotes: number
           user_id: string
@@ -174,6 +175,7 @@ export type Database = {
           cycle_id?: string | null
           id?: string
           image_url?: string | null
+          is_anonymous?: boolean
           is_featured?: boolean
           upvotes?: number
           user_id: string
@@ -184,6 +186,7 @@ export type Database = {
           cycle_id?: string | null
           id?: string
           image_url?: string | null
+          is_anonymous?: boolean
           is_featured?: boolean
           upvotes?: number
           user_id?: string
