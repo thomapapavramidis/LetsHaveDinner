@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import Navigation from "@/components/Navigation";
-import { Calendar, MapPin, Users, Sparkles, CheckCircle2, MessageCircle } from "lucide-react";
+import { Clock, MapPin, Users, Calendar, Trophy, ThumbsUp, ChevronLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface Cycle {
@@ -17,30 +16,70 @@ interface Cycle {
   is_active: boolean;
 }
 
-interface Response {
+interface PairResponse {
   id: string;
-  answer: string;
-  created_at: string;
-  user_id: string;
+  response_text: string;
+  vote_count: number;
+  group_id: string;
+}
+
+interface MatchHistory {
+  id: string;
+  cycle_id: string;
+  date_time: string;
+  prompt: string;
+  members: string[];
 }
 
 const Index = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [cycle, setCycle] = useState<Cycle | null>(null);
-  const [isOptedIn, setIsOptedIn] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [topResponses, setTopResponses] = useState<Response[]>([]);
+  const [isOptedIn, setIsOptedIn] = useState(false);
+  const [hasAnswered, setHasAnswered] = useState(false);
+  const [timeUntilMatch, setTimeUntilMatch] = useState("");
+  const [isAfterMatchTime, setIsAfterMatchTime] = useState(false);
+  const [topResponses, setTopResponses] = useState<PairResponse[]>([]);
+  const [currentVotingResponse, setCurrentVotingResponse] = useState<PairResponse | null>(null);
+  const [unseenResponses, setUnseenResponses] = useState<PairResponse[]>([]);
+  const [matchHistory, setMatchHistory] = useState<MatchHistory[]>([]);
+  const [myLastRanking, setMyLastRanking] = useState<number | null>(null);
 
   useEffect(() => {
     if (user) {
-      checkForNewCycle();
-      fetchTopResponses();
+      checkCycleStatus();
+      fetchMatchHistory();
     }
   }, [user]);
 
-  const checkForNewCycle = async () => {
+  useEffect(() => {
+    if (cycle) {
+      const interval = setInterval(() => {
+        const now = new Date();
+        const matchTime = new Date(cycle.date_time);
+        const diff = matchTime.getTime() - now.getTime();
+
+        if (diff <= 0) {
+          setTimeUntilMatch("Match time!");
+          setIsAfterMatchTime(true);
+          clearInterval(interval);
+        } else {
+          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          setTimeUntilMatch(`${days}d ${hours}h ${minutes}m`);
+          setIsAfterMatchTime(false);
+        }
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [cycle]);
+
+  const checkCycleStatus = async () => {
     setLoading(true);
+    
     const { data: activeCycle } = await supabase
       .from("cycles")
       .select("*")
@@ -50,10 +89,11 @@ const Index = () => {
     if (activeCycle) {
       setCycle(activeCycle);
       
-      const hasSeenPrompt = localStorage.getItem(`qotw_seen_${activeCycle.id}`);
-      
-      if (!hasSeenPrompt) {
-        navigate("/question-of-week");
+      const answered = localStorage.getItem(`cycle_answered_${activeCycle.id}`);
+      setHasAnswered(!!answered);
+
+      if (!answered) {
+        navigate("/answer");
         return;
       }
 
@@ -65,253 +105,460 @@ const Index = () => {
         .single();
 
       setIsOptedIn(!!optIn);
+    } else {
+      setCycle(null);
+      await fetchLastCycleData();
     }
+
     setLoading(false);
   };
 
-  const fetchTopResponses = async () => {
-    if (!user) return;
-
-    const { data: activeCycleData } = await supabase
+  const fetchLastCycleData = async () => {
+    const { data: lastCycle } = await supabase
       .from("cycles")
-      .select("id")
-      .eq("is_active", true)
+      .select("*")
+      .eq("is_active", false)
+      .order("date_time", { ascending: false })
+      .limit(1)
       .single();
 
-    if (!activeCycleData) return;
+    if (lastCycle) {
+      const { data: responses } = await supabase
+        .from("pair_responses")
+        .select("*")
+        .eq("cycle_id", lastCycle.id)
+        .order("vote_count", { ascending: false })
+        .limit(3);
 
-    const { data } = await supabase
-      .from("responses")
-      .select("*")
-      .eq("cycle_id", activeCycleData.id)
-      .order("created_at", { ascending: false })
-      .limit(5);
+      if (responses) {
+        setTopResponses(responses);
+      }
 
-    if (data) {
-      setTopResponses(data);
+      const { data: votedIds } = await supabase
+        .from("response_votes")
+        .select("response_id")
+        .eq("user_id", user?.id);
+
+      const votedResponseIds = votedIds?.map(v => v.response_id) || [];
+
+      const { data: allResponses } = await supabase
+        .from("pair_responses")
+        .select("*")
+        .eq("cycle_id", lastCycle.id)
+        .not("id", "in", `(${votedResponseIds.join(",")})`);
+
+      if (allResponses && allResponses.length > 0) {
+        setUnseenResponses(allResponses);
+        setCurrentVotingResponse(allResponses[0]);
+      }
+
+      const { data: userGroup } = await supabase
+        .from("group_members")
+        .select("group_id")
+        .eq("user_id", user?.id)
+        .single();
+
+      if (userGroup) {
+        const { data: userResponse } = await supabase
+          .from("pair_responses")
+          .select("vote_count")
+          .eq("cycle_id", lastCycle.id)
+          .eq("group_id", userGroup.group_id)
+          .single();
+
+        if (userResponse) {
+          const { data: allRanked } = await supabase
+            .from("pair_responses")
+            .select("vote_count")
+            .eq("cycle_id", lastCycle.id)
+            .order("vote_count", { ascending: false });
+
+          if (allRanked) {
+            const ranking = allRanked.findIndex(r => r.vote_count <= userResponse.vote_count) + 1;
+            setMyLastRanking(ranking);
+          }
+        }
+      }
     }
   };
 
-  const handleOptIn = async () => {
-    if (!user || !cycle) return;
+  const fetchMatchHistory = async () => {
+    if (!user) return;
 
-    try {
-      const { error } = await supabase
-        .from("opt_ins")
-        .insert({
-          user_id: user.id,
-          cycle_id: cycle.id
+    const { data: groupMemberships } = await supabase
+      .from("group_members")
+      .select("group_id")
+      .eq("user_id", user.id);
+
+    if (!groupMemberships) return;
+
+    const groupIds = groupMemberships.map(gm => gm.group_id);
+
+    const { data: groups } = await supabase
+      .from("groups")
+      .select("id, cycle_id, cycles(prompt, date_time)")
+      .in("id", groupIds);
+
+    if (!groups) return;
+
+    const history: MatchHistory[] = [];
+    for (const group of groups) {
+      const { data: members } = await supabase
+        .from("group_members")
+        .select("user_id, profiles(name)")
+        .eq("group_id", group.id);
+
+      if (members && group.cycles) {
+        history.push({
+          id: group.id,
+          cycle_id: group.cycle_id,
+          date_time: group.cycles.date_time,
+          prompt: group.cycles.prompt,
+          members: members.map(m => m.profiles?.name || "Anonymous").filter(Boolean)
         });
-
-      if (error) throw error;
-
-      setIsOptedIn(true);
-      toast.success("you're in for this week! 🎉");
-    } catch (error) {
-      console.error(error);
-      toast.error("something went wrong, try again");
+      }
     }
+
+    setMatchHistory(history.sort((a, b) => 
+      new Date(b.date_time).getTime() - new Date(a.date_time).getTime()
+    ));
   };
 
   const handleOptOut = async () => {
     if (!user || !cycle) return;
 
     try {
-      const { error } = await supabase
+      const { error: optError } = await supabase
         .from("opt_ins")
         .delete()
         .eq("user_id", user.id)
         .eq("cycle_id", cycle.id);
 
-      if (error) throw error;
+      if (optError) throw optError;
 
+      const { error: responseError } = await supabase
+        .from("responses")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("cycle_id", cycle.id);
+
+      if (responseError) throw responseError;
+
+      localStorage.removeItem(`cycle_answered_${cycle.id}`);
+
+      toast.success("You've opted out of this cycle");
       setIsOptedIn(false);
-      toast.success("you're out for this week");
+      setHasAnswered(false);
+      navigate("/answer");
     } catch (error) {
       console.error(error);
-      toast.error("something went wrong, try again");
+      toast.error("Something went wrong");
     }
+  };
+
+  const handleVote = async (responseId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from("response_votes")
+        .insert({
+          user_id: user.id,
+          response_id: responseId
+        });
+
+      if (error) throw error;
+
+      const nextResponses = unseenResponses.filter(r => r.id !== responseId);
+      setUnseenResponses(nextResponses);
+      setCurrentVotingResponse(nextResponses[0] || null);
+
+      toast.success("Vote recorded!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to vote");
+    }
+  };
+
+  const handleSkipVote = () => {
+    const nextResponses = unseenResponses.filter(r => r.id !== currentVotingResponse?.id);
+    setUnseenResponses(nextResponses);
+    setCurrentVotingResponse(nextResponses[0] || null);
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background pb-20">
-        <div className="container max-w-2xl mx-auto p-6 pt-8">
-          <Skeleton className="h-8 w-64 mb-8 rounded-xl" />
-          <Skeleton className="h-96 w-full rounded-2xl" />
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 pb-20">
+        <div className="container max-w-2xl mx-auto p-6 pt-8 space-y-6">
+          <Skeleton className="h-32 w-full rounded-2xl" />
+          <Skeleton className="h-64 w-full rounded-2xl" />
         </div>
-        <Navigation />
       </div>
     );
   }
 
   if (!cycle) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background pb-20">
-        <div className="container max-w-2xl mx-auto p-6 pt-8">
-          <Card className="glass-card border-2 border-border hover-lift animate-fade-in">
-            <CardContent className="p-12 text-center">
-              <Sparkles className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-xl font-semibold text-muted-foreground">
-                no active dinner cycle right now. check back soon!
-              </p>
-            </CardContent>
-          </Card>
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 pb-20 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-secondary/5 rounded-full blur-3xl" />
+        
+        <div className="container max-w-2xl mx-auto p-6 pt-8 relative space-y-6">
+          <div className="animate-fade-in space-y-2">
+            <h1 className="text-4xl font-black text-foreground">
+              Between <span className="gradient-text">Cycles</span>
+            </h1>
+            <p className="text-muted-foreground font-medium">
+              Check out last cycle's top responses
+            </p>
+          </div>
+
+          {topResponses.length > 0 && (
+            <Card className="glass-card border-2 border-border hover-lift animate-fade-in-up">
+              <CardContent className="p-8 space-y-6">
+                <div className="flex items-center gap-3">
+                  <Trophy className="w-7 h-7 text-primary" />
+                  <h2 className="text-2xl font-black text-foreground">Last Cycle's Top 3</h2>
+                </div>
+
+                <div className="space-y-4">
+                  {topResponses.map((response, index) => (
+                    <div
+                      key={response.id}
+                      className="p-6 rounded-xl bg-gradient-to-br from-primary/5 to-secondary/5 border-2 border-primary/20 space-y-3 hover-lift"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-lg ${
+                            index === 0 ? "bg-yellow-500 text-white" :
+                            index === 1 ? "bg-gray-400 text-white" :
+                            "bg-amber-700 text-white"
+                          }`}>
+                            {index + 1}
+                          </div>
+                          <span className="font-bold text-foreground">Rank #{index + 1}</span>
+                        </div>
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10">
+                          <ThumbsUp className="w-4 h-4 text-primary" />
+                          <span className="font-bold text-primary">{response.vote_count}</span>
+                        </div>
+                      </div>
+                      <p className="text-foreground leading-relaxed">{response.response_text}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {myLastRanking && (
+            <Card className="glass-card border-2 border-primary/30 hover-lift animate-fade-in-up" style={{ animationDelay: "100ms" }}>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-bold text-foreground">Your Pair's Ranking</span>
+                  <div className="px-6 py-3 rounded-full bg-gradient-to-r from-primary to-secondary">
+                    <span className="text-2xl font-black text-white">#{myLastRanking}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {currentVotingResponse && (
+            <Card className="glass-card border-2 border-border hover-lift animate-fade-in-up" style={{ animationDelay: "200ms" }}>
+              <CardContent className="p-8 space-y-6">
+                <div className="text-center space-y-2">
+                  <h3 className="text-xl font-black text-foreground">Vote on Responses</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {unseenResponses.length} responses remaining
+                  </p>
+                </div>
+
+                <div className="p-6 rounded-xl bg-muted/30 border border-border min-h-32">
+                  <p className="text-foreground text-lg leading-relaxed">
+                    {currentVotingResponse.response_text}
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button
+                    onClick={handleSkipVote}
+                    variant="outline"
+                    size="lg"
+                    className="flex-1 gap-2"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                    Skip
+                  </Button>
+                  <Button
+                    onClick={() => handleVote(currentVotingResponse.id)}
+                    variant="gradient"
+                    size="lg"
+                    className="flex-1 gap-2"
+                  >
+                    <ThumbsUp className="w-5 h-5" />
+                    Vote
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {matchHistory.length > 0 && (
+            <Card className="glass-card border-2 border-border animate-fade-in-up" style={{ animationDelay: "300ms" }}>
+              <CardContent className="p-8 space-y-6">
+                <h3 className="text-2xl font-black text-foreground">Match History</h3>
+                
+                <div className="space-y-4">
+                  {matchHistory.map((match) => (
+                    <div
+                      key={match.id}
+                      className="p-4 rounded-xl bg-muted/30 border border-border/50 space-y-2 hover:bg-muted/50 transition-colors"
+                    >
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(match.date_time).toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </p>
+                      <p className="font-semibold text-foreground">{match.prompt}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {match.members.map((member, idx) => (
+                          <span key={idx} className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
+                            {member}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
-        <Navigation />
       </div>
     );
   }
 
-  const eventDate = new Date(cycle.date_time);
-  const deadline = new Date(cycle.opt_in_deadline);
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background pb-20 relative overflow-hidden">
-      {/* Decorative background elements */}
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 pb-20 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
       <div className="absolute bottom-0 left-0 w-80 h-80 bg-secondary/5 rounded-full blur-3xl" />
       
-      <div className="container max-w-2xl mx-auto p-6 pt-8 relative">
-        <div className="mb-8 animate-fade-in">
-          <h1 className="text-4xl font-black text-foreground mb-2">
-            this week's <span className="gradient-text">dinner</span>
+      <div className="container max-w-2xl mx-auto p-6 pt-8 relative space-y-6">
+        <div className="animate-fade-in space-y-2">
+          <h1 className="text-4xl font-black text-foreground">
+            This Week's <span className="gradient-text">Dinner</span>
           </h1>
           <p className="text-muted-foreground font-medium">
-            connect with new friends over a meal
+            You're in this cycle!
           </p>
         </div>
 
-        <Card className="glass-card border-2 border-border shadow-[var(--shadow-float)] hover-lift mb-6 animate-fade-in-up" style={{ animationDelay: "100ms" }}>
-          <CardHeader className="pb-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <CardTitle className="text-2xl font-black mb-2">weekly question</CardTitle>
-                <CardDescription className="text-base font-medium">{cycle.prompt}</CardDescription>
-              </div>
-              <Sparkles className="w-8 h-8 text-primary animate-glow flex-shrink-0" />
-            </div>
-          </CardHeader>
-          
-          <CardContent className="space-y-6">
-            <div className="grid gap-4">
-              <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/50 border border-border/50 transition-all hover:bg-muted">
-                <div className="p-3 rounded-xl bg-primary/10">
-                  <Calendar className="w-5 h-5 text-primary" />
+        <Card className="glass-card border-2 border-primary/30 shadow-[var(--shadow-float)] hover-lift animate-fade-in-up">
+          <CardContent className="p-8 space-y-6">
+            {!isAfterMatchTime ? (
+              <>
+                <div className="text-center space-y-4">
+                  <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-primary/20 to-secondary/20 border-2 border-primary/30">
+                    <Clock className="w-6 h-6 text-primary" />
+                    <span className="text-3xl font-black text-foreground">{timeUntilMatch}</span>
+                  </div>
+                  <p className="text-muted-foreground font-medium">until match time</p>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-muted-foreground">dinner date</p>
-                  <p className="font-bold text-foreground">{eventDate.toLocaleDateString('en-US', { 
-                    weekday: 'long', 
-                    month: 'long', 
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit'
-                  })}</p>
-                </div>
-              </div>
 
-              <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/50 border border-border/50 transition-all hover:bg-muted">
-                <div className="p-3 rounded-xl bg-primary/10">
-                  <MapPin className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-muted-foreground">location</p>
-                  <p className="font-bold text-foreground">campus dining hall</p>
-                </div>
-              </div>
+                <div className="grid gap-4">
+                  <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/30 border border-border/50">
+                    <div className="p-3 rounded-xl bg-primary/10">
+                      <Calendar className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-muted-foreground">Dinner Date</p>
+                      <p className="font-bold text-foreground">
+                        {new Date(cycle.date_time).toLocaleDateString('en-US', { 
+                          weekday: 'long', 
+                          month: 'long', 
+                          day: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                  </div>
 
-              <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/50 border border-border/50 transition-all hover:bg-muted">
-                <div className="p-3 rounded-xl bg-primary/10">
-                  <Users className="w-5 h-5 text-primary" />
+                  <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/30 border border-border/50">
+                    <div className="p-3 rounded-xl bg-primary/10">
+                      <MapPin className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-muted-foreground">Location</p>
+                      <p className="font-bold text-foreground">Campus Dining Hall</p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-muted-foreground">opt-in deadline</p>
-                  <p className="font-bold text-foreground">{deadline.toLocaleDateString('en-US', { 
-                    month: 'long', 
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit'
-                  })}</p>
-                </div>
-              </div>
-            </div>
 
-            {isOptedIn ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-center gap-3 p-6 rounded-xl bg-gradient-to-r from-primary/10 to-secondary/10 border-2 border-primary/20 animate-scale-in">
-                  <CheckCircle2 className="w-6 h-6 text-primary animate-glow" />
-                  <span className="text-lg font-black text-foreground">you're in this week! 🎉</span>
-                </div>
-                <Button 
-                  onClick={handleOptOut} 
+                <Button
+                  onClick={handleOptOut}
                   variant="outline"
                   size="lg"
                   className="w-full"
                 >
-                  change my mind, opt out
+                  Opt Out of This Cycle
                 </Button>
-              </div>
+              </>
             ) : (
-              <Button 
-                onClick={handleOptIn} 
-                variant="gradient"
-                size="lg"
-                className="w-full gap-2"
-              >
-                <Sparkles className="w-5 h-5" />
-                i'm in this week!
-              </Button>
+              <>
+                <div className="text-center space-y-4">
+                  <div className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-primary to-secondary">
+                    <Users className="w-7 h-7 text-white" />
+                    <span className="text-2xl font-black text-white">Match Found!</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="p-6 rounded-xl bg-gradient-to-br from-primary/10 to-secondary/10 border-2 border-primary/20">
+                    <p className="text-center text-muted-foreground mb-4">Your match details will appear here after matching is complete</p>
+                  </div>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
 
-        {/* Top Answers Section */}
-        {topResponses.length > 0 && (
-          <Card className="glass-card border-2 border-border shadow-[var(--shadow-card)] hover-lift mb-6 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
-            <CardContent className="p-8">
-              <div className="flex items-center gap-3 mb-6">
-                <MessageCircle className="w-6 h-6 text-primary" />
-                <h2 className="text-2xl font-black text-foreground">Top Answers This Week</h2>
-              </div>
+        {matchHistory.length > 0 && (
+          <Card className="glass-card border-2 border-border animate-fade-in-up" style={{ animationDelay: "100ms" }}>
+            <CardContent className="p-8 space-y-6">
+              <h3 className="text-2xl font-black text-foreground">Match History</h3>
               
               <div className="space-y-4">
-                {topResponses.map((response, index) => (
-                  <div 
-                    key={response.id} 
-                    className="p-4 rounded-xl bg-muted/30 border border-border/50 hover:border-primary/30 transition-all animate-fade-in-up"
-                    style={{ animationDelay: `${(index + 1) * 50}ms` }}
+                {matchHistory.map((match) => (
+                  <div
+                    key={match.id}
+                    className="p-4 rounded-xl bg-muted/30 border border-border/50 space-y-2 hover:bg-muted/50 transition-colors"
                   >
-                    <p className="text-foreground font-medium">{response.answer}</p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      {new Date(response.created_at).toLocaleDateString()}
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(match.date_time).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
                     </p>
+                    <p className="font-semibold text-foreground">{match.prompt}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {match.members.map((member, idx) => (
+                        <span key={idx} className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
+                          {member}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
-
-              <Button
-                onClick={() => navigate("/question-of-week")}
-                variant="outline"
-                className="w-full mt-6 font-semibold"
-              >
-                Change My Answer
-              </Button>
             </CardContent>
           </Card>
         )}
-
-        <Card className="glass-card border-2 border-border/50 animate-fade-in-up" style={{ animationDelay: "300ms" }}>
-          <CardContent className="p-6">
-            <p className="text-sm text-muted-foreground text-center font-medium">
-              <span className="font-bold text-foreground">how it works:</span> opt in by the deadline, get matched with 3-4 students, 
-              meet at the dining hall for dinner and great conversation!
-            </p>
-          </CardContent>
-        </Card>
       </div>
-      
-      <Navigation />
     </div>
   );
 };

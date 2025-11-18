@@ -128,6 +128,48 @@ export type Database = {
           },
         ]
       }
+      pair_responses: {
+        Row: {
+          created_at: string
+          cycle_id: string
+          group_id: string
+          id: string
+          response_text: string
+          vote_count: number
+        }
+        Insert: {
+          created_at?: string
+          cycle_id: string
+          group_id: string
+          id?: string
+          response_text: string
+          vote_count?: number
+        }
+        Update: {
+          created_at?: string
+          cycle_id?: string
+          group_id?: string
+          id?: string
+          response_text?: string
+          vote_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pair_responses_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pair_responses_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_upvotes: {
         Row: {
           created_at: string
@@ -233,6 +275,35 @@ export type Database = {
           year?: string | null
         }
         Relationships: []
+      }
+      response_votes: {
+        Row: {
+          created_at: string
+          id: string
+          response_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          response_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          response_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "response_votes_response_id_fkey"
+            columns: ["response_id"]
+            isOneToOne: false
+            referencedRelation: "pair_responses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       responses: {
         Row: {
