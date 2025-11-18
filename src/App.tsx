@@ -6,11 +6,10 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
-import Match from "./pages/Match";
 import Feed from "./pages/Feed";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
-import QuestionOfWeek from "./pages/QuestionOfWeek";
+import PreCycleAnswer from "./pages/PreCycleAnswer";
 import Navigation from "./components/Navigation";
 import NotFound from "./pages/NotFound";
 
@@ -52,8 +51,7 @@ const App = () => (
                 <ProtectedRoute>
                   <Routes>
                     <Route path="/" element={<Index />} />
-                    <Route path="/question" element={<QuestionOfWeek />} />
-                    <Route path="/match" element={<Match />} />
+                    <Route path="/answer" element={<PreCycleAnswer />} />
                     <Route path="/feed" element={<Feed />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="*" element={<NotFound />} />

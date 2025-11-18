@@ -1,10 +1,9 @@
-import { Home, Users, MessageSquare, User } from "lucide-react";
+import { Home, MessageSquare, User } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 const Navigation = () => {
   const navItems = [
     { to: "/", icon: Home, label: "Home" },
-    { to: "/match", icon: Users, label: "Match" },
     { to: "/feed", icon: MessageSquare, label: "Feed" },
     { to: "/profile", icon: User, label: "Profile" },
   ];
