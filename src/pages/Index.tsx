@@ -205,16 +205,30 @@ const Index = () => {
     for (const group of groups) {
       const { data: members } = await supabase
         .from("group_members")
-        .select("user_id, profiles(name)")
+        .select("user_id")
         .eq("group_id", group.id);
 
       if (members && group.cycles) {
+        // Fetch profile names for all members
+        const memberNames: string[] = [];
+        for (const member of members) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("name")
+            .eq("id", member.user_id)
+            .single();
+          
+          if (profile?.name) {
+            memberNames.push(profile.name);
+          }
+        }
+
         history.push({
           id: group.id,
           cycle_id: group.cycle_id,
           date_time: group.cycles.date_time,
           prompt: group.cycles.prompt,
-          members: members.map(m => m.profiles?.name || "Anonymous").filter(Boolean)
+          members: memberNames.length > 0 ? memberNames : ["Anonymous"]
         });
       }
     }
