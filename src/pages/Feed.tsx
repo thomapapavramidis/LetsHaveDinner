@@ -17,6 +17,8 @@ interface Post {
   image_url: string | null;
   upvotes: number;
   is_anonymous: boolean;
+  cycle_id: string | null;
+  is_featured: boolean;
   created_at: string;
 }
 

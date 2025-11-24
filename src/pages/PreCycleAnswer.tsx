@@ -9,9 +9,9 @@ import { Clock, Sparkles } from "lucide-react";
 
 interface Cycle {
   id: string;
+  title: string;
   prompt: string;
-  date_time: string;
-  opt_in_deadline: string;
+  event_date: string;
 }
 
 const PreCycleAnswer = () => {
@@ -30,7 +30,7 @@ const PreCycleAnswer = () => {
     if (cycle) {
       const interval = setInterval(() => {
         const now = new Date();
-        const matchTime = new Date(cycle.date_time);
+        const matchTime = new Date(cycle.event_date);
         const diff = matchTime.getTime() - now.getTime();
 
         if (diff <= 0) {

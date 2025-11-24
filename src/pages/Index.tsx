@@ -10,9 +10,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 interface Cycle {
   id: string;
+  title: string;
   prompt: string;
-  date_time: string;
-  opt_in_deadline: string;
+  event_date: string;
   is_active: boolean;
 }
 
@@ -26,7 +26,7 @@ interface PairResponse {
 interface MatchHistory {
   id: string;
   cycle_id: string;
-  date_time: string;
+  event_date: string;
   prompt: string;
   members: string[];
 }
@@ -57,7 +57,7 @@ const Index = () => {
     if (cycle) {
       const interval = setInterval(() => {
         const now = new Date();
-        const matchTime = new Date(cycle.date_time);
+        const matchTime = new Date(cycle.event_date);
         const diff = matchTime.getTime() - now.getTime();
 
         if (diff <= 0) {
@@ -79,20 +79,23 @@ const Index = () => {
 
   const checkCycleStatus = async () => {
     setLoading(true);
-    
-    const { data: activeCycle } = await supabase
+
+    const { data: activeCycle, error } = await supabase
       .from("cycles")
       .select("*")
       .eq("is_active", true)
       .single();
 
+    console.log("Active cycle query result:", { activeCycle, error });
+
     if (activeCycle) {
       setCycle(activeCycle);
-      
+
       const answered = localStorage.getItem(`cycle_answered_${activeCycle.id}`);
       setHasAnswered(!!answered);
 
-      if (!answered) {
+      // Don't redirect if in admin mode
+      if (!answered && !sessionStorage.getItem('admin-mode')) {
         navigate("/answer");
         return;
       }
@@ -118,7 +121,7 @@ const Index = () => {
       .from("cycles")
       .select("*")
       .eq("is_active", false)
-      .order("date_time", { ascending: false })
+      .order("event_date", { ascending: false })
       .limit(1)
       .single();
 
@@ -196,7 +199,7 @@ const Index = () => {
 
     const { data: groups } = await supabase
       .from("groups")
-      .select("id, cycle_id, cycles(prompt, date_time)")
+      .select("id, cycle_id, cycles(prompt, event_date)")
       .in("id", groupIds);
 
     if (!groups) return;
@@ -226,15 +229,15 @@ const Index = () => {
         history.push({
           id: group.id,
           cycle_id: group.cycle_id,
-          date_time: group.cycles.date_time,
+          event_date: group.cycles.event_date,
           prompt: group.cycles.prompt,
           members: memberNames.length > 0 ? memberNames : ["Anonymous"]
         });
       }
     }
 
-    setMatchHistory(history.sort((a, b) => 
-      new Date(b.date_time).getTime() - new Date(a.date_time).getTime()
+    setMatchHistory(history.sort((a, b) =>
+      new Date(b.event_date).getTime() - new Date(a.event_date).getTime()
     ));
   };
 
@@ -430,7 +433,7 @@ const Index = () => {
                       className="p-4 rounded-xl bg-muted/30 border border-border/50 space-y-2 hover:bg-muted/50 transition-colors"
                     >
                       <p className="text-sm text-muted-foreground">
-                        {new Date(match.date_time).toLocaleDateString('en-US', { 
+                        {new Date(match.event_date).toLocaleDateString('en-US', { 
                           month: 'short', 
                           day: 'numeric',
                           year: 'numeric'
@@ -490,7 +493,7 @@ const Index = () => {
                     <div>
                       <p className="text-sm font-semibold text-muted-foreground">Dinner Date</p>
                       <p className="font-bold text-foreground">
-                        {new Date(cycle.date_time).toLocaleDateString('en-US', { 
+                        {new Date(cycle.event_date).toLocaleDateString('en-US', { 
                           weekday: 'long', 
                           month: 'long', 
                           day: 'numeric',
@@ -552,7 +555,7 @@ const Index = () => {
                     className="p-4 rounded-xl bg-muted/30 border border-border/50 space-y-2 hover:bg-muted/50 transition-colors"
                   >
                     <p className="text-sm text-muted-foreground">
-                      {new Date(match.date_time).toLocaleDateString('en-US', { 
+                      {new Date(match.event_date).toLocaleDateString('en-US', { 
                         month: 'short', 
                         day: 'numeric',
                         year: 'numeric'
