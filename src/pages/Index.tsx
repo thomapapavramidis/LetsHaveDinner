@@ -78,6 +78,35 @@ const Index = () => {
     }
   }, [cycle]);
 
+  // Calculate time until next Monday (must be before any conditional returns)
+  useEffect(() => {
+    const calculateTimeUntilMonday = () => {
+      const now = new Date();
+      const nextMonday = new Date(now);
+
+      const dayOfWeek = now.getDay();
+      const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek);
+
+      nextMonday.setDate(now.getDate() + daysUntilMonday);
+      nextMonday.setHours(0, 0, 0, 0);
+
+      const diff = nextMonday.getTime() - now.getTime();
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      setTimeUntilMonday(`${days}d ${hours}h ${minutes}m ${seconds}s`);
+    };
+
+    if (!cycle) {
+      calculateTimeUntilMonday();
+      const interval = setInterval(calculateTimeUntilMonday, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [cycle]);
+
   const checkCycleStatus = async () => {
     setLoading(true);
 
@@ -315,36 +344,6 @@ const Index = () => {
     );
   }
 
-  // useEffect for calculating time until next Monday
-  useEffect(() => {
-    const calculateTimeUntilMonday = () => {
-      const now = new Date();
-      const nextMonday = new Date(now);
-
-      // Get days until next Monday (1 = Monday, 0 = Sunday)
-      const dayOfWeek = now.getDay();
-      const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek); // If Sunday, 1 day. Otherwise, days to next Monday
-
-      nextMonday.setDate(now.getDate() + daysUntilMonday);
-      nextMonday.setHours(0, 0, 0, 0); // Set to midnight
-
-      const diff = nextMonday.getTime() - now.getTime();
-
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-      setTimeUntilMonday(`${days}d ${hours}h ${minutes}m ${seconds}s`);
-    };
-
-    if (!cycle) {
-      calculateTimeUntilMonday();
-      const interval = setInterval(calculateTimeUntilMonday, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [cycle]);
-
   if (!cycle) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/90 via-primary to-secondary/80 relative overflow-hidden flex items-center justify-center p-4">
@@ -373,151 +372,6 @@ const Index = () => {
           <p className="text-white/70 text-lg md:text-xl font-medium">
             Check back Monday for the new weekly dinner cycle
           </p>
-        </div>
-      </div>
-    );
-  }
-
-  // OLD VERSION BELOW - DELETE FROM HERE
-  if (false) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 pb-20 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-secondary/5 rounded-full blur-3xl" />
-
-        <div className="container max-w-2xl mx-auto p-6 pt-8 relative space-y-6">
-          <div className="animate-fade-in space-y-2">
-            <h1 className="text-4xl font-black text-foreground">
-              Between <span className="gradient-text">Cycles</span>
-            </h1>
-            <p className="text-muted-foreground font-medium">
-              Check out last cycle's top responses
-            </p>
-          </div>
-
-          {topResponses.length > 0 && (
-            <Card className="glass-card border-2 border-border hover-lift animate-fade-in-up">
-              <CardContent className="p-8 space-y-6">
-                <div className="flex items-center gap-3">
-                  <Trophy className="w-7 h-7 text-primary" />
-                  <h2 className="text-2xl font-black text-foreground">Last Cycle's Top 3</h2>
-                </div>
-
-                <div className="space-y-4">
-                  {topResponses.map((response, index) => (
-                    <div
-                      key={response.id}
-                      className="p-6 rounded-xl bg-gradient-to-br from-primary/5 to-secondary/5 border-2 border-primary/20 space-y-3 hover-lift"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-lg ${
-                            index === 0 ? "bg-yellow-500 text-white" :
-                            index === 1 ? "bg-gray-400 text-white" :
-                            "bg-amber-700 text-white"
-                          }`}>
-                            {index + 1}
-                          </div>
-                          <span className="font-bold text-foreground">Rank #{index + 1}</span>
-                        </div>
-                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10">
-                          <ThumbsUp className="w-4 h-4 text-primary" />
-                          <span className="font-bold text-primary">{response.vote_count}</span>
-                        </div>
-                      </div>
-                      <p className="text-foreground leading-relaxed">{response.response_text}</p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {myLastRanking && (
-            <Card className="glass-card border-2 border-primary/30 hover-lift animate-fade-in-up" style={{ animationDelay: "100ms" }}>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-bold text-foreground">Your Pair's Ranking</span>
-                  <div className="px-6 py-3 rounded-full bg-gradient-to-r from-primary to-secondary">
-                    <span className="text-2xl font-black text-white">#{myLastRanking}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {currentVotingResponse && (
-            <Card className="glass-card border-2 border-border hover-lift animate-fade-in-up" style={{ animationDelay: "200ms" }}>
-              <CardContent className="p-8 space-y-6">
-                <div className="text-center space-y-2">
-                  <h3 className="text-xl font-black text-foreground">Vote on Responses</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {unseenResponses.length} responses remaining
-                  </p>
-                </div>
-
-                <div className="p-6 rounded-xl bg-muted/30 border border-border min-h-32">
-                  <p className="text-foreground text-lg leading-relaxed">
-                    {currentVotingResponse.response_text}
-                  </p>
-                </div>
-
-                <div className="flex gap-3">
-                  <Button
-                    onClick={handleSkipVote}
-                    variant="outline"
-                    size="lg"
-                    className="flex-1 gap-2"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                    Skip
-                  </Button>
-                  <Button
-                    onClick={() => handleVote(currentVotingResponse.id)}
-                    variant="gradient"
-                    size="lg"
-                    className="flex-1 gap-2"
-                  >
-                    <ThumbsUp className="w-5 h-5" />
-                    Vote
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {matchHistory.length > 0 && (
-            <Card className="glass-card border-2 border-border animate-fade-in-up" style={{ animationDelay: "300ms" }}>
-              <CardContent className="p-8 space-y-6">
-                <h3 className="text-2xl font-black text-foreground">Match History</h3>
-                
-                <div className="space-y-4">
-                  {matchHistory.map((match) => (
-                    <div
-                      key={match.id}
-                      className="p-4 rounded-xl bg-muted/30 border border-border/50 space-y-2 hover:bg-muted/50 transition-colors"
-                    >
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(match.event_date).toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
-                      </p>
-                      <p className="font-semibold text-foreground">{match.prompt}</p>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {match.members.map((member, idx) => (
-                          <span key={idx} className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
-                            {member}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
     );
