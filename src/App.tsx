@@ -10,6 +10,8 @@ import Feed from "./pages/Feed";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import PreCycleAnswer from "./pages/PreCycleAnswer";
+import AdminTestCycle from "./pages/AdminTestCycle";
+import AdminDashboard from "./pages/AdminDashboard";
 import Navigation from "./components/Navigation";
 import NotFound from "./pages/NotFound";
 
@@ -45,6 +47,8 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<AuthRedirect />} />
+            <Route path="/admin/test-cycle" element={<AdminTestCycle />} />
+            <Route path="/admin" element={<AdminDashboard />} />
             <Route
               path="/*"
               element={

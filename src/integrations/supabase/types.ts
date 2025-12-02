@@ -17,27 +17,27 @@ export type Database = {
       cycles: {
         Row: {
           created_at: string
-          date_time: string
+          event_date: string
           id: string
           is_active: boolean
-          opt_in_deadline: string
           prompt: string
+          title: string
         }
         Insert: {
           created_at?: string
-          date_time: string
+          event_date: string
           id?: string
           is_active?: boolean
-          opt_in_deadline: string
           prompt: string
+          title: string
         }
         Update: {
           created_at?: string
-          date_time?: string
+          event_date?: string
           id?: string
           is_active?: boolean
-          opt_in_deadline?: string
           prompt?: string
+          title?: string
         }
         Relationships: []
       }

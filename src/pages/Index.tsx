@@ -39,6 +39,7 @@ const Index = () => {
   const [isOptedIn, setIsOptedIn] = useState(false);
   const [hasAnswered, setHasAnswered] = useState(false);
   const [timeUntilMatch, setTimeUntilMatch] = useState("");
+  const [timeUntilMonday, setTimeUntilMonday] = useState("");
   const [isAfterMatchTime, setIsAfterMatchTime] = useState(false);
   const [topResponses, setTopResponses] = useState<PairResponse[]>([]);
   const [currentVotingResponse, setCurrentVotingResponse] = useState<PairResponse | null>(null);
@@ -314,12 +315,76 @@ const Index = () => {
     );
   }
 
+  // useEffect for calculating time until next Monday
+  useEffect(() => {
+    const calculateTimeUntilMonday = () => {
+      const now = new Date();
+      const nextMonday = new Date(now);
+
+      // Get days until next Monday (1 = Monday, 0 = Sunday)
+      const dayOfWeek = now.getDay();
+      const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek); // If Sunday, 1 day. Otherwise, days to next Monday
+
+      nextMonday.setDate(now.getDate() + daysUntilMonday);
+      nextMonday.setHours(0, 0, 0, 0); // Set to midnight
+
+      const diff = nextMonday.getTime() - now.getTime();
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      setTimeUntilMonday(`${days}d ${hours}h ${minutes}m ${seconds}s`);
+    };
+
+    if (!cycle) {
+      calculateTimeUntilMonday();
+      const interval = setInterval(calculateTimeUntilMonday, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [cycle]);
+
   if (!cycle) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/90 via-primary to-secondary/80 relative overflow-hidden flex items-center justify-center p-4">
+        {/* Floating orbs */}
+        <div className="absolute top-20 left-20 w-72 h-72 bg-accent/20 rounded-full blur-3xl animate-float" />
+        <div className="absolute bottom-20 right-20 w-96 h-96 bg-secondary/30 rounded-full blur-3xl animate-float" style={{ animationDelay: "1s" }} />
+
+        <div className="relative text-center space-y-12 animate-fade-in max-w-4xl">
+          <div className="space-y-4">
+            <h1 className="text-5xl md:text-7xl font-black text-white leading-tight">
+              Next Cycle Starts
+            </h1>
+            <p className="text-white/80 text-xl md:text-2xl font-medium">
+              Monday at Midnight
+            </p>
+          </div>
+
+          {/* Giant Countdown */}
+          <div className="inline-flex items-center justify-center px-12 py-8 rounded-3xl bg-white/10 backdrop-blur-md border-2 border-white/20">
+            <Clock className="w-16 h-16 text-white mr-6" />
+            <span className="text-6xl md:text-8xl font-black text-white tracking-tight">
+              {timeUntilMonday}
+            </span>
+          </div>
+
+          <p className="text-white/70 text-lg md:text-xl font-medium">
+            Check back Monday for the new weekly dinner cycle
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // OLD VERSION BELOW - DELETE FROM HERE
+  if (false) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 pb-20 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-secondary/5 rounded-full blur-3xl" />
-        
+
         <div className="container max-w-2xl mx-auto p-6 pt-8 relative space-y-6">
           <div className="animate-fade-in space-y-2">
             <h1 className="text-4xl font-black text-foreground">

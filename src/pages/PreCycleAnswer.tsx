@@ -124,14 +124,14 @@ const PreCycleAnswer = () => {
           <p className="text-white/80 text-sm font-medium">until match time</p>
         </div>
 
-        {/* Main Card */}
-        <div className="glass-card border-2 border-white/20 shadow-[var(--shadow-glow)] p-8 md:p-12 space-y-8">
+        {/* Content without card wrapper */}
+        <div className="space-y-8">
           <div className="text-center space-y-4">
             <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white/10 backdrop-blur-sm text-white font-bold text-sm">
               <Sparkles className="w-5 h-5 animate-glow" />
-              This Cycle's Prompt
+              Whats Your Take?
             </div>
-            
+
             <h1 className="text-3xl md:text-4xl font-black text-white leading-tight">
               {cycle.prompt}
             </h1>
